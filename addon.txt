@@ -1,4 +1,0 @@
-name=Sandbox Factions
-description=A full-featured faction system for Garry's Mod. Create factions, manage members, set allies, and see your teammates through walls.
-author=SandboxFactions
-version=1.0.0
