@@ -9,6 +9,12 @@
 
 A full-featured faction system for Garry's Mod. Create factions, manage members and ranks, form alliances, declare wars, and see your teammates and allies through walls.
 
+## Mysterious features or weird stuff
+
+This project wasn't public originally, and had many, many changes before coming to the actual version it is right now, so stuff that might seem weird or that is "impossible to exist" in some way is pretty normal, although i tried to manually find those cases and remove them from the codebase.
+
+^ This addon was private and made for my server only, therefore there was a bunch of "ugly" workarounds so i could deliver features on time and other stuff - but they should be gone by now.
+
 ## Features
 
 - Public or invite-only factions with a customizable rank hierarchy (Owner, Sub-Owner, and two renameable custom ranks) and a granular per-rank permission system controlling who can approve join requests and who can kick members.
