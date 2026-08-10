@@ -81,7 +81,7 @@ hook.Add("PostDrawTranslucentRenderables", "SFS_DrawPings3D", function(depth, sk
         if p.expire <= now then continue end
         kept[#kept + 1] = p
         
-        -- Sem limite de distância aqui no 3D, apenas checa se está na frente da câmera
+        -- No distance limit here in 3D, just checks whether it's in front of the camera
         if (p.pos - eyePos):Dot(eyeFwd) <= 0 then continue end
         
         local a = math.Clamp(((p.expire - now) * invDur) * 255, 0, 255)
@@ -150,7 +150,7 @@ hook.Add("HUDPaint", "SFS_PingHUD", function()
         local p = SFS.CL.PingList[i]
         if p.expire <= now then continue end
 
-        -- Verificação de distância removida!
+        -- Distance check removed!
         local dist = eyePos:Distance(p.pos)
         local a = math.Clamp(((p.expire - now) * invDur) * 220, 0, 220)
         
