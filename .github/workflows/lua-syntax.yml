@@ -1,0 +1,30 @@
+name: Lua Syntax Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lua
+        run: sudo apt-get update && sudo apt-get install -y lua5.4
+
+      - name: Check Lua syntax
+        run: |
+          # GMod's Lua dialect (GLua) supports a `continue` keyword that stock
+          # luac doesn't understand, so it's neutralized before checking.
+          # This is a known, harmless false positive - not a real syntax error.
+          fail=0
+          while IFS= read -r -d '' f; do
+            if ! sed 's/\bcontinue\b/do end/g' "$f" | luac5.4 -p - 2>/tmp/err; then
+              echo "::error file=$f::$(cat /tmp/err)"
+              fail=1
+            fi
+          done < <(find lua -name '*.lua' -print0)
+          exit $fail
