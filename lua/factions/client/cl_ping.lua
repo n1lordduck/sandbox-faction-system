@@ -43,12 +43,27 @@ hook.Add("InitPostEntity", "SFS_Ping_Init", function()
     _cx, _cy = _sw*0.5, _sh*0.5
 end)
 
-hook.Add("PlayerButtonDown", "SFS_PingKey", function(ply, button)
-    if CLIENT and ply ~= LocalPlayer() then return end
+--// PlayerButtonDown is a predicted hook - in singleplayer it only fires
+--// serverside, never clientside, so it silently never triggers this. Think
+--// + input.IsKeyDown with manual edge detection works in both SP and MP.
+local _pingKeyWasDown = false
+
+hook.Add("Think", "SFS_PingKey", function()
+    local ply = LocalPlayer()
+    if not IsValid(ply) then return end
 
     local targetKey = SFS.CL.PingKey:GetInt()
+    local isDown = input.IsKeyDown(targetKey)
 
-    if button ~= targetKey then return end
+    if not isDown then
+        _pingKeyWasDown = false
+        return
+    end
+    if _pingKeyWasDown then return end
+    _pingKeyWasDown = true
+
+    if vgui.GetKeyboardFocus() ~= nil then return end
+    if gui.IsGameUIVisible() then return end
 
     local now = CurTime()
     if now - _facCheck >= 0.5 then
@@ -66,17 +81,17 @@ hook.Add("PlayerButtonDown", "SFS_PingKey", function(ply, button)
     local pos = tr.HitPos
 
     net.Start("SFS_Ping")
-        net.WriteFloat(pos.x) 
-        net.WriteFloat(pos.y) 
+        net.WriteFloat(pos.x)
+        net.WriteFloat(pos.y)
         net.WriteFloat(pos.z)
     net.SendToServer()
 
     surface.PlaySound("buttons/button19.wav")
 
     SFS.CL.PingList[#SFS.CL.PingList + 1] = {
-        pos = pos, 
-        nick = "You", 
-        expire = now + SFS.Config.PingDuration, 
+        pos = pos,
+        nick = "You",
+        expire = now + SFS.Config.PingDuration,
         own = true,
     }
 end)
