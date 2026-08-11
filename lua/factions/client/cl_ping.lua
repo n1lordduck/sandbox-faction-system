@@ -4,6 +4,32 @@ local pingMat  = Material("icon16/flag_red.png")
 local lastPing = 0
 local PING_CD  = 1.5
 
+local OUTLINE_OFFSETS = {
+    {-1,-1}, {0,-1}, {1,-1},
+    {-1, 0},          {1, 0},
+    {-1, 1}, {0, 1}, {1, 1},
+}
+
+--// Draws the icon with a black outer ring and a white inner ring so it
+--// reads against both dark and bright backgrounds, not just one.
+local function drawPingIcon(mat, x, y, size, r, g, b, a)
+    local half = size * 0.5
+    surface.SetMaterial(mat)
+
+    surface.SetDrawColor(0, 0, 0, a)
+    for _, o in ipairs(OUTLINE_OFFSETS) do
+        surface.DrawTexturedRect(x - half + o[1] * 2, y - half + o[2] * 2, size, size)
+    end
+
+    surface.SetDrawColor(255, 255, 255, a)
+    for _, o in ipairs(OUTLINE_OFFSETS) do
+        surface.DrawTexturedRect(x - half + o[1], y - half + o[2], size, size)
+    end
+
+    surface.SetDrawColor(r, g, b, a)
+    surface.DrawTexturedRect(x - half, y - half, size, size)
+end
+
 local _inFac    = false
 local _facCheck = 0
 
@@ -87,9 +113,7 @@ hook.Add("PostDrawTranslucentRenderables", "SFS_DrawPings3D", function(depth, sk
         local a = math.Clamp(((p.expire - now) * invDur) * 255, 0, 255)
         local bob = math.sin(now * 4) * 3
         cam.Start3D2D(p.pos + Vector(0,0,14+bob), Angle(0, eyeY-90, 90), 0.1)
-            surface.SetDrawColor(255, 80, 80, a)
-            surface.SetMaterial(pingMat)
-            surface.DrawTexturedRect(-16, -16, 32, 32)
+            drawPingIcon(pingMat, 0, 0, 32, 255, 80, 80, a)
             draw.SimpleTextOutlined(p.nick, "DermaDefault", 0, 20,
                 Color(255,255,255,a), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, Color(0,0,0,a))
         cam.End3D2D()
@@ -157,18 +181,14 @@ hook.Add("HUDPaint", "SFS_PingHUD", function()
         local bx, by, insideScreen = borderPos(p.pos)
 
         if insideScreen then
-            surface.SetDrawColor(255, 80, 80, a)
-            surface.SetMaterial(pingMat)
-            surface.DrawTexturedRect(bx - SZH, by - SZH, SZ, SZ)
+            drawPingIcon(pingMat, bx, by, SZ, 255, 80, 80, a)
             local dm = math.floor(dist * INV52 + 0.5)
             draw.SimpleTextOutlined(p.nick .. " [" .. dm .. "m]", "DermaDefault",
                 bx, by + SZH + 2, Color(255,255,255,a), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP,
                 1, Color(0,0,0,a))
         else
             local pa = math.floor(a * (0.75 + math.sin(now*6)*0.25))
-            surface.SetDrawColor(255, 80, 80, pa)
-            surface.SetMaterial(pingMat)
-            surface.DrawTexturedRect(bx - SZH, by - SZH, SZ, SZ)
+            drawPingIcon(pingMat, bx, by, SZ, 255, 80, 80, pa)
             local dm = math.floor(dist * INV52 + 0.5)
             draw.SimpleTextOutlined(p.nick, "DermaDefault",
                 bx, by - SZH - 2, Color(255,200,200,pa), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM,
