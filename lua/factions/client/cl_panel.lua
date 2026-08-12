@@ -72,6 +72,9 @@ local function fetchImageMaterial(url, onReady)
             iconFetching[url] = nil
             onReady(mat)
             return
+        else
+            SFS:print("[DEBUG] Cached icon file is invalid, deleting: " .. fname)
+            file.Delete(fname)
         end
     end
 
