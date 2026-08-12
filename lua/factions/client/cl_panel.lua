@@ -37,7 +37,6 @@ local SFS_ICON16_LIST = {
 }
 
 local iconMatCache     = {}
-local iconGlobalVersion = 0
 local SPINNER_MAT = Material("icon16/arrow_refresh.png")
 local iconFetching      = {}
 
@@ -225,10 +224,6 @@ local function createIconPanel(parent, x, y, w, h, iconUrl)
     return pnl
 end
 
-hook.Add("SFS_FactionsUpdated", "SFS_ClearIconCache", function()
-    iconGlobalVersion = iconGlobalVersion + 1
-    iconMatCache = {}
-end)
 
 local function openIconPicker(onSelect)
     local frame = vgui.Create("DFrame")
