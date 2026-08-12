@@ -20,23 +20,24 @@ local function timeLeft(war)
     return string.format("%02d:%02d", math.floor(r / 60), r % 60)
 end
 
-local _warIconCache = {}
+--// Uses the same fetch+cache as the main faction panel (SFS.CL.GetIconMat*
+--// in cl_panel.lua) instead of a second cache that never learns about icons
+--// fetched elsewhere and never live-updates once a fetch completes.
+local function setWarIconPnl(pnl, iconUrl)
+    local url = (iconUrl and iconUrl ~= "") and iconUrl or "icon16/group.png"
 
-local function getWarFacMat(fac)
-    if not fac or not fac.icon or fac.icon == "" then return Material("icon16/group.png") end
-    if fac.icon:sub(1, 7) == "icon16/" then return Material(fac.icon) end
-    if _warIconCache[fac.icon] then return _warIconCache[fac.icon] end
-    if SFS.Config.AllowImgurPictures then
-        local fname = "sfs_icons/" .. fac.icon:gsub("[^%w]", "_"):sub(1, 60) .. ".png"
-        if file.Exists(fname, "DATA") then
-            local mat = Material("../data/" .. fname, "noclamp smooth")
-            if mat and not mat:IsError() then
-                _warIconCache[fac.icon] = mat
-                return mat
-            end
-        end
+    if url:sub(1, 7) == "icon16/" then
+        pnl._mat = Material(url)
+    else
+        pnl._mat = SFS.CL.GetIconMatSync(url)
+        SFS.CL.GetIconMatAsync(url, pnl)
     end
-    return Material("icon16/group.png")
+
+    pnl.Paint = function(s, w, h)
+        surface.SetMaterial(s._mat or Material("icon16/group.png"))
+        surface.SetDrawColor(255, 255, 255, 255)
+        surface.DrawTexturedRect(0, 0, w, h)
+    end
 end
 
 local function drawSideList(parent, war, sideKey, x, y, w, h)
@@ -161,10 +162,7 @@ local function buildWarEntry(parent, war, yOff, W)
     local ico1 = vgui.Create("DPanel", entry)
     ico1:SetPos(PAD, cy + 2)
     ico1:SetSize(16, 16)
-    local m1 = getWarFacMat(fac1)
-    ico1.Paint = function(_, w, h)
-        surface.SetMaterial(m1) surface.SetDrawColor(255,255,255,255) surface.DrawTexturedRect(0,0,w,h)
-    end
+    setWarIconPnl(ico1, fac1 and fac1.icon)
 
     local n1Lbl = vgui.Create("DLabel", entry)
     n1Lbl:SetPos(PAD + 20, cy)
@@ -181,10 +179,7 @@ local function buildWarEntry(parent, war, yOff, W)
     local ico2 = vgui.Create("DPanel", entry)
     ico2:SetPos(s2X, cy + 2)
     ico2:SetSize(16, 16)
-    local m2 = getWarFacMat(fac2)
-    ico2.Paint = function(_, w, h)
-        surface.SetMaterial(m2) surface.SetDrawColor(255,255,255,255) surface.DrawTexturedRect(0,0,w,h)
-    end
+    setWarIconPnl(ico2, fac2 and fac2.icon)
 
     local n2Lbl = vgui.Create("DLabel", entry)
     n2Lbl:SetPos(s2X + 20, cy)

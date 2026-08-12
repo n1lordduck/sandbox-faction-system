@@ -145,14 +145,30 @@ local function getIconMatAsync(url, pnl)
         return
     end
     if iconMatCache[url] then
-        if IsValid(pnl) then pnl:InvalidateLayout(true) end
+        if IsValid(pnl) then
+            pnl._mat = iconMatCache[url]
+            pnl:InvalidateLayout(true)
+        end
         return
     end
     fetchImageMaterial(url, function(mat)
         iconMatCache[url] = mat
-        if IsValid(pnl) then pnl:InvalidateLayout(true) end
+        --// pnl._mat was still whatever getIconMat() returned at panel-creation
+        --// time (the default icon, since nothing was cached yet) - Paint reads
+        --// pnl._mat every frame, so without this reassignment the panel keeps
+        --// showing the default icon forever even though the fetch succeeded.
+        if IsValid(pnl) then
+            pnl._mat = mat
+            pnl:InvalidateLayout(true)
+        end
     end)
 end
+
+--// Shared with any other panel that needs a faction icon (e.g. cl_war_panel.lua)
+--// so there's one fetch+cache path and one live-update fix, not a second
+--// parallel cache that can go stale independently.
+SFS.CL.GetIconMatSync  = getIconMat
+SFS.CL.GetIconMatAsync = getIconMatAsync
 
 local function applyIconToPnl(pnl, url, w, h)
     if isIcon16(url) then
