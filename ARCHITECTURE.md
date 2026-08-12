@@ -135,6 +135,17 @@ One known gap: `sendNotify(...)` toast popups (join-request/approved/kicked/rank
 
 `cl_data.lua` maintains a small derived cache (`_cachedMyFaction`, `_cachedMates`, `_cachedAllies`) recomputed lazily - invalidated on `SFS_FactionsUpdated`/`PlayerDisconnected`, rebuilt on the next `Think` that finds it invalid. This exists purely so the halo renderer (`cl_halo.lua`, runs every frame in `PreDrawHalos`/`HUDPaint`) and the ping system don't re-scan `SFS.CL.Factions` + `player.GetAll()` every single frame.
 
+## Icon caching
+
+Faction icons are either a built-in `icon16/*.png` path or a custom image URL (imgur only, gated by `sfa_allow_imgur_pictures` and size-capped by `sfa_icon_max_size_mb`). Everything lives in `cl_panel.lua`:
+
+- `iconMatCache[url]` / `iconFetching[url]` - module-level, in-memory, keyed by the raw URL. `SFS.CL.GetIconMatSync(url)` returns whatever's cached right now (or the default icon); `SFS.CL.GetIconMatAsync(url, pnl)` kicks off a fetch if needed and, once resolved, sets `pnl._mat` directly and calls `pnl:InvalidateLayout(true)` - every icon-displaying panel's `Paint` reads `self._mat` live, which is what makes an icon pop in once its fetch finishes instead of needing the panel reopened. A panel with a fetch genuinely in flight and nothing cached yet shows a spinning `icon16/arrow_refresh.png` instead of just silently sitting on the default.
+- `fetchImageMaterial(url, onReady)` - the actual fetch: memory cache, then on-disk cache (`data/sfs_icons/<hash>.png`, controlled by `sfs_icon_cache`), then `http.Fetch`. A cached file that fails to load as a valid material gets deleted rather than retried forever.
+- `urlToFilename(url)` (exposed as `SFS.CL.UrlToIconFilename`) - the one place that turns a URL into its cache filename: `url:lower():gsub("[^%w]", "_"):sub(1, 60) .. ".png"`. The `:lower()` matters - GMod's file system silently lowercases paths on write, so `file.Find` later returns the lowercase name regardless of what case the original URL was in. Every place that needs to compare a URL against an on-disk filename (the Staff Panel's icon browser, the per-icon delete button) goes through this same function instead of recomputing the hash inline, specifically so that fix can't quietly regress in one call site while staying fixed in another.
+- `SFS.CL.GetIconFactionName(iconFileName)` (`cl_data.lua`) - reverse lookup for the Staff Panel's icon browser, matching a cached filename back to whichever faction is currently using that URL. Checks a small saved map (`data/sfs_icons/icon_faction_map.json`, rebuilt on every `SFS_FactionsUpdated` from `SFS.CL.Factions`) first, then falls back to scanning `SFS.CL.Factions` directly.
+
+`cl_war_panel.lua` uses the exact same `SFS.CL.GetIconMatSync`/`GetIconMatAsync` pair for the war-entry faction icons rather than keeping its own separate cache - two independent caches for the same URLs used to mean an icon fetched in one panel wouldn't be known about in the other.
+
 ## UI structure (`cl_panel.lua`)
 
 One `DFrame` (`SFS.OpenMainPanel`, bound to `!factions`/`/factions`/toolgun menu), with tabs added conditionally:
@@ -146,7 +157,9 @@ One `DFrame` (`SFS.OpenMainPanel`, bound to `!factions`/`/factions`/toolgun menu
 | My Faction | only if in one | member list, join-request approval, friendly-fire/halo toggles |
 | Manage Faction | only if owner/subowner | rank labels, permissions grid, allies, war declare, announcements |
 | Create Faction | only if not in one | - |
-| Staff Panel | only if `HasGroupPerm(..., "force_join")` or superadmin | cross-faction admin tools, Strings/Language editor |
+| Staff Panel | only if `HasGroupPerm(..., "force_join")` or superadmin | cross-faction admin tools, Strings/Language editor, icon cache browser |
 | Settings | yes | client-only convars: notifications, icon cache, ping sound, halo-on-self, personal language override |
 
-The panel rebuilds itself wholesale (`SFS.OpenMainPanel()` called again) whenever your own faction membership or rank changes while it's open, rather than trying to patch the existing tab set in place.
+Every tab except Factions is lazy: `AddSheet` gets an empty placeholder panel, and the real content is only built the first time that tab is actually selected (`DPropertySheet:OnActiveTabChanged`). Factions is built immediately since `AddSheet` auto-activates whichever sheet is added first. This exists because `DPropertySheet:AddSheet` requires an already-built panel - building all six tabs' full content synchronously on every single panel open (member lists, forms, the whole Settings tab) was the actual cause of a noticeable stutter when opening the panel, not something related to icon loading.
+
+The panel rebuilds itself wholesale (`SFS.OpenMainPanel()` called again) whenever your own faction membership or rank changes while it's open, rather than trying to patch the existing tab set in place. The hook driving this (`SFS_FactionsUpdated` -> `"SFS_RebuildPanel"`) uses one constant name, not a per-panel-instance one - there's only ever one main panel, so each open replaces the previous registration instead of leaking a new uniquely-named hook that only gets cleaned up lazily on its next fire. A tab's own internal content does not automatically refresh just because the outer panel didn't rebuild - if a tab needs to reflect live data changes while it stays open (the Factions browse list, the Staff Panel's icon browser), it registers its own `SFS_FactionsUpdated` hook scoped to that tab's panel.

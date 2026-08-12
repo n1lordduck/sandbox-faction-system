@@ -326,19 +326,15 @@ end
 
 function SFS.CL.GetIconFactionName(iconFileName)
     local savedMap = loadIconMap()
-    local urlKey   = iconFileName:gsub(".png$", ""):gsub("_", "[^%w]")
+    local fullPath = "sfs_icons/" .. iconFileName
     for facID, entry in pairs(savedMap) do
-        local mapped = entry.icon:gsub("[^%w]", "_"):sub(1, 60) .. ".png"
-        if mapped == iconFileName then
+        if SFS.CL.UrlToIconFilename(entry.icon) == fullPath then
             return entry.name
         end
     end
     for facID, fac in pairs(SFS.CL.Factions) do
-        if fac.icon and fac.icon ~= "" then
-            local mapped = fac.icon:gsub("[^%w]", "_"):sub(1, 60) .. ".png"
-            if mapped == iconFileName then
-                return fac.name
-            end
+        if fac.icon and fac.icon ~= "" and SFS.CL.UrlToIconFilename(fac.icon) == fullPath then
+            return fac.name
         end
     end
     return nil

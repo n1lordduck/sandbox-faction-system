@@ -49,9 +49,11 @@ local function isURL(url)
 end
 
 local function urlToFilename(url)
-    local name = url:gsub("[^%w]", "_"):sub(1, 60)
+    local name = url:lower():gsub("[^%w]", "_"):sub(1, 60)
     return "sfs_icons/" .. name .. ".png"
 end
+
+SFS.CL.UrlToIconFilename = urlToFilename
 
 local function fetchImageMaterial(url, onReady)
     if iconMatCache[url] then onReady(iconMatCache[url]) return end
@@ -1775,8 +1777,7 @@ local function buildStaffTab(sheet)
                 file.Delete(fullPath)
                 if iconMatCache then
                     for url, _ in pairs(iconMatCache) do
-                        local fn = "sfs_icons/" .. url:gsub("[^%w]", "_"):sub(1, 60) .. ".png"
-                        if fn == fullPath then iconMatCache[url] = nil break end
+                        if urlToFilename(url) == fullPath then iconMatCache[url] = nil break end
                     end
                 end
                 refreshIconList()
@@ -1785,6 +1786,14 @@ local function buildStaffTab(sheet)
     end
 
     refreshIconList()
+
+    hook.Add("SFS_FactionsUpdated", "SFS_IconList_" .. tostring(iconsPnl), function()
+        if not IsValid(iconsPnl) then
+            hook.Remove("SFS_FactionsUpdated", "SFS_IconList_" .. tostring(iconsPnl))
+            return
+        end
+        refreshIconList()
+    end)
 
     local clearAllBtn = vgui.Create("DButton", iconsPnl)
     clearAllBtn:SetText("Clear All Icons")
