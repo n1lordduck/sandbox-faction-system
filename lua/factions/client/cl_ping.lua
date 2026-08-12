@@ -10,8 +10,6 @@ local OUTLINE_OFFSETS = {
     {-1, 1}, {0, 1}, {1, 1},
 }
 
---// Draws the icon with a black outer ring and a white inner ring so it
---// reads against both dark and bright backgrounds, not just one.
 local function drawPingIcon(mat, x, y, size, r, g, b, a)
     local half = size * 0.5
     surface.SetMaterial(mat)
@@ -43,9 +41,6 @@ hook.Add("InitPostEntity", "SFS_Ping_Init", function()
     _cx, _cy = _sw*0.5, _sh*0.5
 end)
 
---// PlayerButtonDown is a predicted hook - in singleplayer it only fires
---// serverside, never clientside, so it silently never triggers this. Think
---// + input.IsKeyDown with manual edge detection works in both SP and MP.
 local _pingKeyWasDown = false
 
 hook.Add("Think", "SFS_PingKey", function()

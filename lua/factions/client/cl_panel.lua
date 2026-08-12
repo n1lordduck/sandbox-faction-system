@@ -156,10 +156,6 @@ local function getIconMatAsync(url, pnl)
     end
     fetchImageMaterial(url, function(mat)
         iconMatCache[url] = mat
-        --// pnl._mat was still whatever getIconMat() returned at panel-creation
-        --// time (the default icon, since nothing was cached yet) - Paint reads
-        --// pnl._mat every frame, so without this reassignment the panel keeps
-        --// showing the default icon forever even though the fetch succeeded.
         if IsValid(pnl) then
             pnl._mat = mat
             pnl:InvalidateLayout(true)
@@ -167,9 +163,6 @@ local function getIconMatAsync(url, pnl)
     end)
 end
 
---// Shared with any other panel that needs a faction icon (e.g. cl_war_panel.lua)
---// so there's one fetch+cache path and one live-update fix, not a second
---// parallel cache that can go stale independently.
 SFS.CL.GetIconMatSync  = getIconMat
 SFS.CL.GetIconMatAsync = getIconMatAsync
 
@@ -186,8 +179,6 @@ local function applyIconToPnl(pnl, url, w, h)
         if IsValid(pnl._img) then pnl._img:Remove() pnl._img = nil end
         pnl._mat = getIconMat(url)
         pnl.Paint = function(s, sw, sh)
-            --// Still fetching and nothing cached yet - spin instead of just
-            --// silently sitting on the default icon with no feedback at all.
             if iconFetching[url] and not iconMatCache[url] then
                 surface.SetDrawColor(255, 255, 255, 255)
                 surface.SetMaterial(SPINNER_MAT)
@@ -263,10 +254,6 @@ local function buildIconRow(parent, currentIcon)
         entry:SetEnabled(true)
     end
 
-    --// DImage:SetImage() only resolves local material paths - it can't fetch
-    --// an actual http(s) URL, so a raw imgur link here just showed nothing.
-    --// createIconPanel already knows how to fetch+cache+live-update a URL
-    --// (same path the real faction icons use), so reuse that instead.
     local preview = createIconPanel(pnl, 646, 0, 24, 24,
         (currentIcon and currentIcon ~= "") and currentIcon or SFS.Config.DefaultIconMaterial)
 
@@ -288,8 +275,6 @@ local function buildIconRow(parent, currentIcon)
             timer.Remove(previewTimerName)
             preview:SetIcon(v ~= "" and v or SFS.Config.DefaultIconMaterial)
         elseif v:sub(1, 7) == "http://" or v:sub(1, 8) == "https://" then
-            --// Debounced - typing/pasting a URL fires OnChange per keystroke,
-            --// don't kick off an HTTP fetch for every partial/incomplete one.
             timer.Create(previewTimerName, 0.6, 1, function()
                 if not IsValid(entry) then return end
                 local cur = entry:GetValue():Trim()
@@ -1999,10 +1984,6 @@ function SFS.IsSuperAdminCL()
     return IsValid(ply) and ply:IsSuperAdmin()
 end
 
---// preferredTab: optional sheet name to land on instead of the first tab
---// (DPropertySheet always selects whatever was added first otherwise) -
---// used so creating/joining a faction lands you on "My Faction" to see the
---// result immediately, instead of back on the generic browse list.
 function SFS.OpenMainPanel(preferredTab)
     if IsValid(activePanel) then activePanel:Remove() end
 

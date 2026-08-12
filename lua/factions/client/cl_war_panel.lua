@@ -20,9 +20,6 @@ local function timeLeft(war)
     return string.format("%02d:%02d", math.floor(r / 60), r % 60)
 end
 
---// Uses the same fetch+cache as the main faction panel (SFS.CL.GetIconMat*
---// in cl_panel.lua) instead of a second cache that never learns about icons
---// fetched elsewhere and never live-updates once a fetch completes.
 local function setWarIconPnl(pnl, iconUrl)
     local url = (iconUrl and iconUrl ~= "") and iconUrl or "icon16/group.png"
 
