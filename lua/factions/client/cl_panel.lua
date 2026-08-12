@@ -1985,6 +1985,7 @@ function SFS.IsSuperAdminCL()
 end
 
 function SFS.OpenMainPanel(preferredTab)
+    SFS:print("[DEBUG] OpenMainPanel called, preferredTab=" .. tostring(preferredTab))
     if IsValid(activePanel) then activePanel:Remove() end
 
     local frame = vgui.Create("DFrame")
@@ -2002,44 +2003,80 @@ function SFS.OpenMainPanel(preferredTab)
     local myFac  = SFS.CL.GetMyFaction()
     local myRank = SFS.CL.GetMyRank()
 
-    sheet:AddSheet("Factions",    buildFactionBrowser(sheet), "icon16/group.png")
-    sheet:AddSheet("War",   SFS.BuildWarTab(sheet),      "icon16/bomb.png")
+    local lazyBuilders = {}
+
+    local function addLazySheet(name, builder, icon)
+        local placeholder = vgui.Create("DPanel", sheet)
+        placeholder.Paint = function() end
+        local info = sheet:AddSheet(name, placeholder, icon)
+        local built = false
+        lazyBuilders[info.Tab] = function()
+            if built then return end
+            built = true
+            local content = builder(sheet)
+            content:SetParent(placeholder)
+            content:Dock(FILL)
+        end
+        return info
+    end
+
+    sheet.OnActiveTabChanged = function(self, old, new)
+        if lazyBuilders[new] then lazyBuilders[new]() end
+    end
+
+    local browseSheet = addLazySheet("Factions", buildFactionBrowser, "icon16/group.png")
+    lazyBuilders[browseSheet.Tab]()
+
+    addLazySheet("War", SFS.BuildWarTab, "icon16/bomb.png")
+
     local myFacSheet
     if myFac then
-        myFacSheet = sheet:AddSheet("My Faction", buildMyFactionTab(sheet), "icon16/user.png")
+        myFacSheet = addLazySheet("My Faction", buildMyFactionTab, "icon16/user.png")
     end
     if myFac and (myRank == "owner" or myRank == "subowner") then
-        sheet:AddSheet("Manage Faction", buildManageTab(sheet), "icon16/cog.png")
+        addLazySheet("Manage Faction", buildManageTab, "icon16/cog.png")
     end
     if not myFac then
-        sheet:AddSheet("Create Faction", buildCreateTab(sheet), "icon16/add.png")
+        addLazySheet("Create Faction", buildCreateTab, "icon16/add.png")
     end
     if SFS.IsSuperAdminCL() or (SFS.CL.HasGroupPerm and SFS.CL.HasGroupPerm("force_join")) then
-        sheet:AddSheet("Staff Panel", buildStaffTab(sheet), "icon16/shield.png")
+        addLazySheet("Staff Panel", buildStaffTab, "icon16/shield.png")
     end
-    sheet:AddSheet("Settings", buildSettingsTab(sheet), "icon16/cog.png")
+    addLazySheet("Settings", buildSettingsTab, "icon16/cog.png")
 
     if preferredTab == "My Faction" and myFacSheet then
         sheet:SetActiveTab(myFacSheet.Tab)
     end
 
-    hook.Add("SFS_FactionsUpdated", "SFS_RebuildPanel_" .. tostring(frame), function()
+    hook.Add("SFS_FactionsUpdated", "SFS_RebuildPanel", function()
+        SFS:print("[DEBUG] SFS_RebuildPanel fired, frame valid=" .. tostring(IsValid(frame)))
         if not IsValid(frame) then
-            hook.Remove("SFS_FactionsUpdated", "SFS_RebuildPanel_" .. tostring(frame))
+            hook.Remove("SFS_FactionsUpdated", "SFS_RebuildPanel")
             return
         end
         timer.Simple(0, function()
-            if not IsValid(frame) then return end
-            local newMyFac  = SFS.CL.GetMyFaction()
-            local newMyRank = SFS.CL.GetMyRank()
-            local facIDOld  = myFac  and myFac.id
-            local facIDNew  = newMyFac and newMyFac.id
-            local changed   = (facIDOld ~= facIDNew) or (newMyRank ~= myRank)
-            if changed then
-                SFS.OpenMainPanel(facIDOld ~= facIDNew and newMyFac and "My Faction" or nil)
-            else
-                myFac  = newMyFac
-                myRank = newMyRank
+            if not IsValid(frame) then
+                SFS:print("[DEBUG] Rebuild check skipped, frame no longer valid")
+                return
+            end
+            local ok, err = pcall(function()
+                local newMyFac  = SFS.CL.GetMyFaction()
+                local newMyRank = SFS.CL.GetMyRank()
+                local facIDOld  = myFac  and myFac.id
+                local facIDNew  = newMyFac and newMyFac.id
+                local changed   = (facIDOld ~= facIDNew) or (newMyRank ~= myRank)
+                SFS:print(string.format(
+                    "[DEBUG] Rebuild check: facIDOld=%s facIDNew=%s myRank=%s newMyRank=%s changed=%s",
+                    tostring(facIDOld), tostring(facIDNew), tostring(myRank), tostring(newMyRank), tostring(changed)))
+                if changed then
+                    SFS.OpenMainPanel(facIDOld ~= facIDNew and newMyFac and "My Faction" or nil)
+                else
+                    myFac  = newMyFac
+                    myRank = newMyRank
+                end
+            end)
+            if not ok then
+                SFS:err("Panel rebuild-on-change check failed: " .. tostring(err))
             end
         end)
     end)
