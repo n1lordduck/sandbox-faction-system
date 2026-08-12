@@ -9,7 +9,7 @@ Global namespace: `SandboxFactionSystem` (aliased everywhere as `local SFS = San
 ```
 SHARED (both realms, in this order)
   sh_framework.lua      -- SFS:print/warn/err
-  sh_lang_presets.lua   -- loads lua/factions/languages/*.json into SFS.LangPresets
+  sh_lang_presets.lua   -- loads lua/factions/languages/*.lua into SFS.LangPresets
   sh_config.lua         -- SFS.Config, SFS.Strings (server-default language), SFS.FormatString
   sh_net.lua            -- registers every net string (SERVER only, via util.AddNetworkString)
   sh_errors.lua         -- SFS.ErrorKeys (error code -> lang key) + SFS.GetError
@@ -121,7 +121,7 @@ Kills are tracked via the `PlayerDeath` hook, matched against whichever war (if 
 
 Three layers, resolved differently depending on **who the message is for**:
 
-- **`SFS.LangPresets[langid]`** - read-only, loaded once from `lua/factions/languages/*.json` (shared realm). Adding a new language is just dropping in another JSON file with the same key set plus a `_label` field; nothing else needs to change since the admin panel's language dropdown and `Lang.GetAllKeys()`-style lookups are all driven by whatever's discovered on disk.
+- **`SFS.LangPresets[langid]`** - read-only, loaded once from `lua/factions/languages/*.lua` (shared realm), each file a plain `return { ... }` table rather than JSON since Steam Workshop's addon whitelist doesn't allow `.json` under `lua/`. Adding a new language is just dropping in another file with the same key set plus a `_label` field; nothing else needs to change since the admin panel's language dropdown and `Lang.GetAllKeys()`-style lookups are all driven by whatever's discovered on disk.
 - **`SFS.Strings`** - the server's *active* default language. Initialized from `LangPresets[SFS.DefaultLangID]` (`"english"`), then overwritten in bulk by whatever the admin last saved via the Strings panel (persisted to `strings.json`, reapplied on boot). There is no per-language override storage - saving always overwrites the single active `SFS.Strings` table, which is why picking a different preset in the admin panel is implemented as "fill every field from that preset, then save" rather than "switch active language ID."
 - **`SFS.PlayerLangPrefs[SteamID64]`** - server-side, populated when a client sends `SFS_SetLangPref` (on join, and whenever they change it in Settings). Only affects messages sent to **that one player individually** via `net.Send(ply)` - resolved through `SFS.StringFor(ply, key)` / `SFS.FormatStringFor(ply, key, vars)` / `SFS.GetErrorFor(ply, code)`, all in `sv_net.lua`, falling back to `SFS.Strings` if the player has no preference or their preset lacks that key.
 

@@ -1,6 +1,6 @@
 local SFS = SandboxFactionSystem
 
-local LANG_DIR = "lua/factions/languages/"
+local LANG_DIR = "factions/languages/"
 local DEFAULT_LANG_ID = "english"
 
 SFS.LangPresets    = {}
@@ -11,12 +11,11 @@ function SFS.LoadLangPresets()
     SFS.LangPresets    = {}
     SFS.LangPresetList = {}
 
-    local files = file.Find(LANG_DIR .. "*.json", "GAME")
+    local files = file.Find("lua/" .. LANG_DIR .. "*.lua", "GAME")
     for _, fname in ipairs(files or {}) do
-        local raw = file.Read(LANG_DIR .. fname, "GAME")
-        local data = raw and util.JSONToTable(raw)
-        if data then
-            local id    = fname:gsub("%.json$", "")
+        local data = include(LANG_DIR .. fname)
+        if istable(data) then
+            local id    = fname:gsub("%.lua$", "")
             local label = data._label or id
             data._label = nil
 
@@ -30,7 +29,7 @@ function SFS.LoadLangPresets()
     table.sort(SFS.LangPresetList, function(a, b) return a.label < b.label end)
 
     if not SFS.LangPresets[DEFAULT_LANG_ID] then
-        SFS:warn("Default language file '" .. DEFAULT_LANG_ID .. ".json' missing or invalid")
+        SFS:warn("Default language file '" .. DEFAULT_LANG_ID .. ".lua' missing or invalid")
     end
 end
 

@@ -44,7 +44,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for how the addon is structured interna
 * `lua/factions/shared` - config, error messages, language presets, and shared networking setup.
 * `lua/factions/server` - faction/war state, persistence, and every `net.Receive` handler.
 * `lua/factions/client` - the faction panel, halo/ping rendering, and chat integration.
-* `lua/factions/languages` - the shipped translation files (`english.json`, `ptbr.json`, `spanish.json`). Adding a new language is just dropping in another JSON file with the same key set.
+* `lua/factions/languages` - the shipped translation files (`english.lua`, `ptbr.lua`, `spanish.lua`, each a plain `return { ... }` table). Adding a new language is just dropping in another file with the same key set. Plain Lua files instead of JSON because Steam Workshop's addon whitelist doesn't allow `.json` under `lua/`.
 
 ## License
 
