@@ -13,6 +13,7 @@ function SFS.LoadLangPresets()
 
     local files = file.Find("lua/" .. LANG_DIR .. "*.lua", "GAME")
     for _, fname in ipairs(files or {}) do
+        AddCSLuaFile(LANG_DIR .. fname)
         local data = include(LANG_DIR .. fname)
         if istable(data) then
             local id    = fname:gsub("%.lua$", "")
