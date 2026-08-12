@@ -1319,12 +1319,15 @@ local function buildSettingsTab(sheet)
         return count, bytes
     end
 
-    local cacheCount, cacheBytes = getCacheInfo()
+    local cacheCount = 0
+    if file.IsDir("sfs_icons", "DATA") then
+        cacheCount = #(file.Find("sfs_icons/*.png", "DATA") or {})
+    end
     local cacheLbl = vgui.Create("DLabel", cacheInfoWrap)
     cacheLbl:SetPos(8, 6)
     cacheLbl:SetSize(400, 18)
     cacheLbl:SetFont("DermaDefaultBold")
-    cacheLbl:SetText(string.format("Cached icons: %d  (%.1f KB)", cacheCount, cacheBytes / 1024))
+    cacheLbl:SetText(string.format("Cached icons: %d  (press Refresh for size)", cacheCount))
 
     local clearBtn = vgui.Create("DButton", cacheInfoWrap)
     clearBtn:SetText("Clear Icon Cache")
