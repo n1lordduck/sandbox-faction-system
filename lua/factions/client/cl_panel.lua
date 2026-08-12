@@ -38,6 +38,7 @@ local SFS_ICON16_LIST = {
 
 local iconMatCache     = {}
 local iconGlobalVersion = 0
+local SPINNER_MAT = Material("icon16/arrow_refresh.png")
 local iconFetching      = {}
 
 local function isIcon16(url)
@@ -183,6 +184,14 @@ local function applyIconToPnl(pnl, url, w, h)
         if IsValid(pnl._img) then pnl._img:Remove() pnl._img = nil end
         pnl._mat = getIconMat(url)
         pnl.Paint = function(s, sw, sh)
+            --// Still fetching and nothing cached yet - spin instead of just
+            --// silently sitting on the default icon with no feedback at all.
+            if iconFetching[url] and not iconMatCache[url] then
+                surface.SetDrawColor(255, 255, 255, 255)
+                surface.SetMaterial(SPINNER_MAT)
+                surface.DrawTexturedRectRotated(sw * 0.5, sh * 0.5, sw, sh, (RealTime() * 220) % 360)
+                return
+            end
             surface.SetMaterial(s._mat or Material(SFS.Config.DefaultIconMaterial))
             surface.SetDrawColor(255, 255, 255, 255)
             surface.DrawTexturedRect(0, 0, sw, sh)
@@ -256,10 +265,12 @@ local function buildIconRow(parent, currentIcon)
         entry:SetEnabled(true)
     end
 
-    local preview = vgui.Create("DImage", pnl)
-    preview:SetPos(646, 0)
-    preview:SetSize(24, 24)
-    preview:SetImage((currentIcon and currentIcon ~= "") and currentIcon or SFS.Config.DefaultIconMaterial)
+    --// DImage:SetImage() only resolves local material paths - it can't fetch
+    --// an actual http(s) URL, so a raw imgur link here just showed nothing.
+    --// createIconPanel already knows how to fetch+cache+live-update a URL
+    --// (same path the real faction icons use), so reuse that instead.
+    local preview = createIconPanel(pnl, 646, 0, 24, 24,
+        (currentIcon and currentIcon ~= "") and currentIcon or SFS.Config.DefaultIconMaterial)
 
     local pickBtn = vgui.Create("DButton", pnl)
     pickBtn:SetPos(676, 0)
@@ -268,18 +279,24 @@ local function buildIconRow(parent, currentIcon)
     pickBtn.DoClick = function()
         openIconPicker(function(chosen)
             entry:SetText(chosen)
-            preview:SetImage(chosen)
+            preview:SetIcon(chosen)
         end)
     end
 
+    local previewTimerName = "SFS_IconPreview_" .. tostring(entry)
     entry.OnChange = function(s)
         local v = s:GetValue():Trim()
-        if v == "" then
-            preview:SetImage(SFS.Config.DefaultIconMaterial)
-        elseif v:sub(1, 7) == "icon16/" then
-            preview:SetImage(v)
+        if v == "" or v:sub(1, 7) == "icon16/" then
+            timer.Remove(previewTimerName)
+            preview:SetIcon(v ~= "" and v or SFS.Config.DefaultIconMaterial)
         elseif v:sub(1, 7) == "http://" or v:sub(1, 8) == "https://" then
-            preview:SetImage(v)
+            --// Debounced - typing/pasting a URL fires OnChange per keystroke,
+            --// don't kick off an HTTP fetch for every partial/incomplete one.
+            timer.Create(previewTimerName, 0.6, 1, function()
+                if not IsValid(entry) then return end
+                local cur = entry:GetValue():Trim()
+                if cur == v then preview:SetIcon(cur) end
+            end)
         end
     end
 
@@ -1981,7 +1998,11 @@ function SFS.IsSuperAdminCL()
     return IsValid(ply) and ply:IsSuperAdmin()
 end
 
-function SFS.OpenMainPanel()
+--// preferredTab: optional sheet name to land on instead of the first tab
+--// (DPropertySheet always selects whatever was added first otherwise) -
+--// used so creating/joining a faction lands you on "My Faction" to see the
+--// result immediately, instead of back on the generic browse list.
+function SFS.OpenMainPanel(preferredTab)
     if IsValid(activePanel) then activePanel:Remove() end
 
     local frame = vgui.Create("DFrame")
@@ -2001,8 +2022,9 @@ function SFS.OpenMainPanel()
 
     sheet:AddSheet("Factions",    buildFactionBrowser(sheet), "icon16/group.png")
     sheet:AddSheet("War",   SFS.BuildWarTab(sheet),      "icon16/bomb.png")
+    local myFacSheet
     if myFac then
-        sheet:AddSheet("My Faction", buildMyFactionTab(sheet), "icon16/user.png")
+        myFacSheet = sheet:AddSheet("My Faction", buildMyFactionTab(sheet), "icon16/user.png")
     end
     if myFac and (myRank == "owner" or myRank == "subowner") then
         sheet:AddSheet("Manage Faction", buildManageTab(sheet), "icon16/cog.png")
@@ -2014,6 +2036,10 @@ function SFS.OpenMainPanel()
         sheet:AddSheet("Staff Panel", buildStaffTab(sheet), "icon16/shield.png")
     end
     sheet:AddSheet("Settings", buildSettingsTab(sheet), "icon16/cog.png")
+
+    if preferredTab == "My Faction" and myFacSheet then
+        sheet:SetActiveTab(myFacSheet.Tab)
+    end
 
     hook.Add("SFS_FactionsUpdated", "SFS_RebuildPanel_" .. tostring(frame), function()
         if not IsValid(frame) then
@@ -2028,7 +2054,7 @@ function SFS.OpenMainPanel()
             local facIDNew  = newMyFac and newMyFac.id
             local changed   = (facIDOld ~= facIDNew) or (newMyRank ~= myRank)
             if changed then
-                SFS.OpenMainPanel()
+                SFS.OpenMainPanel(facIDOld ~= facIDNew and newMyFac and "My Faction" or nil)
             else
                 myFac  = newMyFac
                 myRank = newMyRank
