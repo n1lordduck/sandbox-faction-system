@@ -107,6 +107,7 @@ net.Receive("SFS_SquadRecruit", function(_, ply)
 
     SFS.SquadOwners[npc] = fac.id
     npc:SetNWString("SFS_SquadFaction", fac.id)
+    npc:AddRelationship("player D_NU 90")
     setFactionRelationship(npc, fac.id, D_LI)
 
     sendChat(ply, "SquadRecruited", { npcClass = npc:GetClass(), factionName = fac.name })
