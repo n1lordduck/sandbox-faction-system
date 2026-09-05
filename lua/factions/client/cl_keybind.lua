@@ -7,6 +7,11 @@ hook.Add("PopulateToolMenu", "SFS_ToolMenu", function()
         pnl:Help("Ping Keybind (default: B)")
         local keyBinder = pnl:KeyBinder("Ping Key", "sfs_ping_key")
         keyBinder:SetSize(230, 30)
+
+        pnl:Help("Squad Radial Keybind (default: T) - hold to command recruited NPCs")
+        local squadKeyBinder = pnl:KeyBinder("Squad Radial Key", "sfs_squad_key")
+        squadKeyBinder:SetSize(230, 30)
+
         pnl:Help("Open faction panel with 'factions' in console or chat.")
     end)
 end)

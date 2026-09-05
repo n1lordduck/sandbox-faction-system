@@ -854,7 +854,7 @@ local function buildManageTab(sheet)
         form:AddItem(permDescLbl)
 
         local permGrid = vgui.Create("DPanel", form)
-        permGrid:SetSize(730, 60)
+        permGrid:SetSize(730, 80)
         permGrid.Paint = function() end
 
         local ranks = { { key = "admin", label = "Admin" }, { key = "mod", label = "Mod" } }
@@ -868,7 +868,7 @@ local function buildManageTab(sheet)
             rankLabelEl:SetText(getMemberRankLabel(myFac, rankDef.key) .. ":")
             rankLabelEl:SetFont("DermaDefaultBold")
 
-            local permDefs = { { key = "approve", label = "Can approve members" }, { key = "kick", label = "Can kick members" } }
+            local permDefs = { { key = "approve", label = "Can approve members" }, { key = "kick", label = "Can kick members" }, { key = "recruitNpc", label = "Can recruit NPCs" } }
             permChecks[rankDef.key] = {}
             for j, permDef in ipairs(permDefs) do
                 local chk = vgui.Create("DCheckBoxLabel", permGrid)
@@ -876,7 +876,8 @@ local function buildManageTab(sheet)
                 chk:SetSize(colW - 8, 18)
                 chk:SetText(permDef.label)
                 local curVal = myFac.permissions and myFac.permissions[rankDef.key] and myFac.permissions[rankDef.key][permDef.key]
-                chk:SetChecked(curVal == true)
+                local defaultsToTrue = permDef.key == "recruitNpc"
+                chk:SetChecked(defaultsToTrue and curVal ~= false or curVal == true)
                 permChecks[rankDef.key][permDef.key] = chk
             end
         end
@@ -1403,6 +1404,84 @@ local function buildSettingsTab(sheet)
     end
 
     form:AddItem(langWrap)
+
+    return pnl
+end
+
+local CHANGELOG = {
+    {
+        title = "NPC Squad Control",
+        entries = {
+            "Double-tap E on an NPC to recruit it into your faction.",
+            "Hold the squad radial key (default T, rebindable in Settings) to command your squad: go to a location, attack a target, or make it follow you.",
+            "Double-tap E on your own recruited NPC again to release it.",
+            "Recruited NPCs show the same health halo and off-screen indicator as faction members.",
+            "Owners can restrict which ranks are allowed to recruit NPCs from the Manage Faction permissions grid.",
+        },
+    },
+}
+
+local function buildWhatsNewTab(sheet)
+    local pnl = vgui.Create("DPanel", sheet)
+    pnl.Paint = function() end
+
+    local scroll = vgui.Create("DScrollPanel", pnl)
+    scroll:Dock(FILL)
+    scroll:DockMargin(8, 8, 8, 8)
+
+    local form = vgui.Create("DForm", scroll)
+    form:Dock(TOP)
+    form:SetName("What's New")
+    form.Paint = function() end
+
+    for _, change in ipairs(CHANGELOG) do
+        local card = vgui.Create("DPanel", form)
+        card:SetTall(34 + #change.entries * 20)
+        card.Paint = function(self, w, h)
+            draw.RoundedBox(4, 0, 0, w, h, Color(255, 255, 255))
+            surface.SetDrawColor(220, 220, 228)
+            surface.DrawOutlinedRect(0, 0, w, h)
+        end
+
+        local title = vgui.Create("DLabel", card)
+        title:SetPos(10, 8)
+        title:SetSize(700, 18)
+        title:SetText(change.title)
+        title:SetFont("DermaDefaultBold")
+        title:SetTextColor(Color(60, 80, 140))
+
+        local y = 30
+        for _, line in ipairs(change.entries) do
+            local lbl = vgui.Create("DLabel", card)
+            lbl:SetPos(20, y)
+            lbl:SetSize(690, 18)
+            lbl:SetText("- " .. line)
+            lbl:SetFont("DermaDefault")
+            lbl:SetTextColor(Color(70, 75, 90))
+            y = y + 20
+        end
+
+        form:AddItem(card)
+    end
+
+    local suggestWrap = vgui.Create("DPanel", form)
+    suggestWrap:SetTall(46)
+    suggestWrap:DockMargin(0, 8, 0, 0)
+    suggestWrap.Paint = function(self, w, h)
+        draw.RoundedBox(4, 0, 0, w, h, Color(245, 238, 255))
+        surface.SetDrawColor(150, 90, 220)
+        surface.DrawOutlinedRect(0, 0, w, h)
+    end
+
+    local suggestLbl = vgui.Create("DLabel", suggestWrap)
+    suggestLbl:SetPos(0, 0)
+    suggestLbl:SetSize(730, 46)
+    suggestLbl:SetText("Have an idea? You can always suggest it!")
+    suggestLbl:SetFont("DermaDefaultBold")
+    suggestLbl:SetTextColor(Color(130, 60, 200))
+    suggestLbl:SetContentAlignment(5)
+
+    form:AddItem(suggestWrap)
 
     return pnl
 end
@@ -2052,6 +2131,7 @@ function SFS.OpenMainPanel(preferredTab)
         addLazySheet("Staff Panel", buildStaffTab, "icon16/shield.png")
     end
     addLazySheet("Settings", buildSettingsTab, "icon16/cog.png")
+    addLazySheet("What's New?", buildWhatsNewTab, "icon16/star.png")
 
     if preferredTab == "My Faction" and myFacSheet then
         sheet:SetActiveTab(myFacSheet.Tab)

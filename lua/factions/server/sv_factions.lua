@@ -64,8 +64,8 @@ function SFS.CreateFaction(owner, name, desc, icon, isPublic)
             member = { label = "Member",    color = "200,200,200" },
         },
         permissions = {
-            admin = { approve = true,  kick = true  },
-            mod   = { approve = false, kick = true  },
+            admin = { approve = true,  kick = true,  recruitNpc = true },
+            mod   = { approve = false, kick = true,  recruitNpc = true },
         },
         allies          = {},
         allyRequests    = {},

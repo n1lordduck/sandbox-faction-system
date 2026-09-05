@@ -6,6 +6,7 @@ SFS.CL.IconCache     = {}
 SFS.CL.IconLoadQueue = {}
 SFS.CL.PingList      = {}
 SFS.CL.PingKey       = CreateClientConVar("sfs_ping_key", tostring(SFS.Config.PingKey), true, false, "Faction ping key")
+SFS.CL.SquadKey      = CreateClientConVar("sfs_squad_key", tostring(SFS.Config.SquadKey), true, false, "Faction squad radial menu key")
 SFS.CL.LangPref      = CreateClientConVar("sfs_lang_pref", "", true, false, "Personal faction language preference override")
 
 function SFS.CL.EffectiveLang()

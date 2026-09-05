@@ -19,6 +19,16 @@ SFS.Config = {
     FriendlyFireDefault         = false,
     AllowImgurPictures          = false,
     FactionMaxAllies            = 4,
+    SquadKey                    = KEY_T,
+    SquadRecruitRange           = 250,
+    SquadDoubleTapWindow        = 0.35,
+    SquadCommandRadius          = 4000,
+    SquadRadialOuterRadius      = 130,
+    SquadRadialInnerRadius      = 46,
+    SquadRadialDeadzone         = 30,
+    SquadFollowTickInterval     = 1,
+    SquadFollowStopDist         = 150,
+    SquadFollowReorderDist      = 120,
 }
 
 SFS.Strings = {}

@@ -48,6 +48,9 @@ local netStrings = {
     "SFS_SyncGroupPerms",
     "SFS_SaveGroupPerms",
     "SFS_SetLangPref",
+    "SFS_SquadRecruit",
+    "SFS_SquadDismiss",
+    "SFS_SquadCommand",
 }
 
 if SERVER then

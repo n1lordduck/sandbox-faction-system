@@ -21,6 +21,7 @@ if SERVER then
     include("factions/server/sv_war.lua")
     include("factions/server/sv_war_net.lua")
     include("factions/server/sv_group_perms.lua")
+    include("factions/server/sv_squad.lua")
 
     AddCSLuaFile("factions/client/cl_data.lua")
     AddCSLuaFile("factions/client/cl_halo.lua")
@@ -30,6 +31,7 @@ if SERVER then
     AddCSLuaFile("factions/client/cl_notify.lua")
     AddCSLuaFile("factions/client/cl_war_data.lua")
     AddCSLuaFile("factions/client/cl_war_panel.lua")
+    AddCSLuaFile("factions/client/cl_squad.lua")
 end
 
 if CLIENT then
@@ -41,4 +43,5 @@ if CLIENT then
     include("factions/client/cl_notify.lua")
     include("factions/client/cl_war_data.lua")
     include("factions/client/cl_war_panel.lua")
+    include("factions/client/cl_squad.lua")
 end
