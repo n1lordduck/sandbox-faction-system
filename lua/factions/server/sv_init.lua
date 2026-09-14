@@ -157,10 +157,9 @@ concommand.Add("faction_reload", function(ply)
     if IsValid(ply) and not SFS.IsSuperAdmin(ply) then return end
     SFS.LoadFactions()
     SFS.LoadStrings()
-    local json = util.TableToJSON(SFS.Factions)
     local strJson = util.TableToJSON(SFS.Strings)
     for _, p in ipairs(player.GetAll()) do
-        net.Start("SFS_SyncAll") net.WriteString(json) net.Send(p)
+        SFS.SyncAllToPlayer(p)
         net.Start("SFS_UpdateStrings") net.WriteString(strJson) net.Send(p)
     end
 end, nil, "Reload factions from disk and re-sync")

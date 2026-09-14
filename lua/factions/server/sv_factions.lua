@@ -14,6 +14,14 @@ local function broadcastFactionRemoved(factionID)
     net.Broadcast()
 end
 
+function SFS.SyncFactionToPlayer(faction, ply)
+    if not IsValid(ply) then return end
+    net.Start("SFS_SyncFaction")
+    net.WriteString(faction.id)
+    net.WriteString(util.TableToJSON(faction))
+    net.Send(ply)
+end
+
 local function broadcastChat(msg, msgType)
     msgType = msgType or 0
     for _, ply in ipairs(player.GetAll()) do

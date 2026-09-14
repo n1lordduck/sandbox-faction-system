@@ -49,7 +49,7 @@ local function drawSideList(parent, war, sideKey, x, y, w, h)
     for facID in pairs(sideFacs) do
         local fac = SFS.CL.GetFactionByID(facID)
         if not fac then continue end
-        local mc  = 1 + table.Count(fac.subowners or {}) + table.Count(fac.members or {})
+        local mc  = SFS.CL.FactionMemberCount(fac)
         local tag = facID == leaderID and ("[Leader] " .. fac.name) or fac.name
         list:AddLine(tag, tostring(mc))
     end

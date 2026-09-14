@@ -29,6 +29,7 @@ local NET_CD_TIMES = {
     SFS_AdminForceJoin      = 2,
     SFS_AdminForceLeave     = 2,
     SFS_ToggleHalo          = 1,
+    SFS_RequestFaction      = 1,
 }
 
 local function checkCooldown(ply, netName)
@@ -44,11 +45,65 @@ local function checkCooldown(ply, netName)
     return true
 end
 
-local function syncAllToPlayer(ply)
-    local json = util.TableToJSON(SFS.Factions)
+local SYNC_CHUNK_SIZE = 40
+local nextSyncGen = 0
+
+local function buildFactionSummary(f)
+    return {
+        id           = f.id,
+        name         = f.name,
+        desc         = f.desc,
+        icon         = f.icon,
+        owner        = f.owner,
+        public       = f.public,
+        friendlyFire = f.friendlyFire,
+        haloEnabled  = f.haloEnabled,
+        memberCount  = 1 + table.Count(f.subowners or {}) + table.Count(f.members or {}),
+    }
+end
+
+local function sendSyncAllChunk(ply, gen, index, total, chunkData)
+    local data = util.Compress(util.TableToJSON(chunkData))
     net.Start("SFS_SyncAll")
-    net.WriteString(json)
+    net.WriteUInt(gen, 32)
+    net.WriteUInt(index, 16)
+    net.WriteUInt(total, 16)
+    net.WriteUInt(#data, 32)
+    net.WriteData(data, #data)
     net.Send(ply)
+end
+
+function SFS.SyncAllToPlayer(ply)
+    nextSyncGen = nextSyncGen + 1
+    local gen = nextSyncGen
+
+    local chunks  = {}
+    local current = {}
+    local count   = 0
+    for id, f in pairs(SFS.Factions) do
+        current[id] = buildFactionSummary(f)
+        count = count + 1
+        if count >= SYNC_CHUNK_SIZE then
+            chunks[#chunks + 1] = current
+            current, count = {}, 0
+        end
+    end
+    if count > 0 or #chunks == 0 then
+        chunks[#chunks + 1] = current
+    end
+
+    for i, chunkData in ipairs(chunks) do
+        sendSyncAllChunk(ply, gen, i - 1, #chunks, chunkData)
+    end
+
+    local faction = SFS.GetPlayerFaction(ply:SteamID())
+    if faction then
+        SFS.SyncFactionToPlayer(faction, ply)
+        for allyID in pairs(faction.allies or {}) do
+            local ally = SFS.GetFactionByID(allyID)
+            if ally then SFS.SyncFactionToPlayer(ally, ply) end
+        end
+    end
 end
 
 local function sendStringsToPlayer(ply)
@@ -343,6 +398,14 @@ net.Receive("SFS_UpdateStrings", function(len, ply)
     end
 end)
 
+net.Receive("SFS_RequestFaction", function(len, ply)
+    if not checkCooldown(ply, "SFS_RequestFaction") then return end
+    local factionID = net.ReadString()
+    local faction    = SFS.GetFactionByID(factionID)
+    if not faction then return end
+    SFS.SyncFactionToPlayer(faction, ply)
+end)
+
 net.Receive("SFS_Ping", function(len, ply)
     local x = net.ReadFloat()
     local y = net.ReadFloat()
@@ -435,7 +498,7 @@ end
 hook.Add("PlayerInitialSpawn", "SFS_SyncOnJoin", function(ply)
     timer.Simple(2, function()
         if IsValid(ply) then
-            syncAllToPlayer(ply)
+            SFS.SyncAllToPlayer(ply)
             sendStringsToPlayer(ply)
             sendConfigToPlayer(ply)
         end

@@ -171,12 +171,62 @@ function SFS.CL.LoadIcon(url, callback)
     end)
 end
 
+local _syncGen      = nil
+local _syncTotal    = 0
+local _syncReceived = 0
+local _syncSeenIDs  = {}
+
+function SFS.CL.HasFullDetail(f)
+    return f ~= nil and f.members ~= nil
+end
+
+function SFS.CL.FactionMemberCount(f)
+    if f.memberCount then return f.memberCount end
+    return 1 + table.Count(f.subowners or {}) + table.Count(f.members or {})
+end
+
+local _lastFacDetailReq = {}
+function SFS.CL.RequestFactionDetail(id)
+    local now = RealTime()
+    if _lastFacDetailReq[id] and now - _lastFacDetailReq[id] < 1 then return end
+    _lastFacDetailReq[id] = now
+    net.Start("SFS_RequestFaction")
+    net.WriteString(id)
+    net.SendToServer()
+end
+
 net.Receive("SFS_SyncAll", function()
-    local json = net.ReadString()
-    local data = util.JSONToTable(json)
-    if data then
-        SFS.CL.Factions = data
-        SFS:print("Received full faction sync: " .. table.Count(SFS.CL.Factions) .. " factions")
+    local gen   = net.ReadUInt(32)
+    local index = net.ReadUInt(16)
+    local total = net.ReadUInt(16)
+    local len   = net.ReadUInt(32)
+    local raw   = net.ReadData(len)
+    local json  = util.Decompress(raw)
+    local chunk = json and util.JSONToTable(json)
+    if not chunk then return end
+
+    if gen ~= _syncGen then
+        _syncGen, _syncTotal, _syncReceived, _syncSeenIDs = gen, total, 0, {}
+    end
+
+    for id, summary in pairs(chunk) do
+        _syncSeenIDs[id] = true
+        local existing = SFS.CL.Factions[id]
+        if existing then
+            for k, v in pairs(summary) do existing[k] = v end
+        else
+            SFS.CL.Factions[id] = summary
+        end
+    end
+
+    _syncReceived = _syncReceived + 1
+    hook.Run("SFS_FactionsUpdated")
+
+    if _syncReceived >= _syncTotal then
+        for id in pairs(SFS.CL.Factions) do
+            if not _syncSeenIDs[id] then SFS.CL.Factions[id] = nil end
+        end
+        SFS:print("Full faction summary sync complete: " .. table.Count(SFS.CL.Factions) .. " factions")
         hook.Run("SFS_FactionsUpdated")
     end
 end)

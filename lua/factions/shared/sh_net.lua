@@ -51,6 +51,7 @@ local netStrings = {
     "SFS_SquadRecruit",
     "SFS_SquadDismiss",
     "SFS_SquadCommand",
+    "SFS_RequestFaction",
 }
 
 if SERVER then

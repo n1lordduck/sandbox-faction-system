@@ -324,6 +324,15 @@ local function buildFactionBrowser(sheet)
         detail:Clear()
         if not faction then return end
 
+        if not SFS.CL.HasFullDetail(faction) then
+            SFS.CL.RequestFactionDetail(faction.id)
+            local loadingLbl = vgui.Create("DLabel", detail)
+            loadingLbl:SetPos(0, 0) loadingLbl:SetSize(470, 460)
+            loadingLbl:SetText("Loading faction details...")
+            loadingLbl:SetTextColor(Color(130, 130, 130)) loadingLbl:SetContentAlignment(5)
+            return
+        end
+
         local myFac   = SFS.CL.GetMyFaction()
         local steamid = LocalPlayer():SteamID()
         local isMine  = myFac and myFac.id == faction.id
@@ -407,7 +416,7 @@ local function buildFactionBrowser(sheet)
         for _, f in pairs(SFS.CL.Factions) do table.insert(rows, f) end
         table.sort(rows, function(a, b) return a.name < b.name end)
         for _, f in ipairs(rows) do
-            local mc = table.Count(f.members or {}) + table.Count(f.subowners or {}) + 1
+            local mc = SFS.CL.FactionMemberCount(f)
             local ln = list:AddLine(f.name, tostring(mc), f.public and "Public" or "Private")
             ln.faction = f
         end
@@ -1517,7 +1526,7 @@ local function buildStaffTab(sheet)
     local function refreshFList()
         fList:Clear()
         for id, f in pairs(SFS.CL.Factions) do
-            local mc = table.Count(f.members or {}) + table.Count(f.subowners or {}) + 1
+            local mc = SFS.CL.FactionMemberCount(f)
             local ln = fList:AddLine(f.name, f.owner, tostring(mc),
                 f.public and "Public" or "Private",
                 f.friendlyFire and "ON" or "OFF",
