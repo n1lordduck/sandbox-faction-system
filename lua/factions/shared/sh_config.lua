@@ -1,7 +1,7 @@
 local SFS = SandboxFactionSystem
 
 SFS.Config = {
-    MaxFactionNameLength        = 30,
+    MaxFactionNameLength        = 100,
     MaxFactionDescLength        = 60,
     PingKey                     = KEY_B,
     PingDuration                = 8,

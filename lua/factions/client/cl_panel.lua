@@ -1190,7 +1190,7 @@ local function buildCreateTab(sheet)
     form:SetPos(8, 8) form:SetSize(750, 460)
     form:SetName("Create New Faction")
 
-    local nameEntry = form:TextEntry("Name (letters/numbers/_ only, max 30)")
+    local nameEntry = form:TextEntry("Name (letters/numbers/_ only, max 100)")
     local descEntry = form:TextEntry("Description (max 60 chars)")
     local iconRow   = buildIconRow(form, "")
     form:AddItem(iconRow)
