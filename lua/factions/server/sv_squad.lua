@@ -67,6 +67,17 @@ local function stopAttacking(npc)
     return target
 end
 
+local function orderAttack(npc, target)
+    stopAttacking(npc)
+
+    SFS.SquadAttacking[npc] = target
+    npc:SetNWEntity("SFS_SquadEnemy", target)
+    npc:AddEntityRelationship(target, D_HT, 99)
+    npc:UpdateEnemyMemory(target, target:GetPos())
+    npc:SetEnemy(target)
+    npc:SetSchedule(SCHED_CHASE_ENEMY)
+end
+
 local function squadFor(ply, factionID)
     local squad = {}
     local radiusSqr = SFS.Config.SquadCommandRadius ^ 2
@@ -172,14 +183,7 @@ net.Receive("SFS_SquadCommand", function(_, ply)
         end
 
         for _, npc in ipairs(squad) do
-            stopAttacking(npc)
-
-            SFS.SquadAttacking[npc] = target
-            npc:SetNWEntity("SFS_SquadEnemy", target)
-            npc:AddEntityRelationship(target, D_HT, 99)
-            npc:UpdateEnemyMemory(target, target:GetPos())
-            npc:SetEnemy(target)
-            npc:SetSchedule(SCHED_CHASE_ENEMY)
+            orderAttack(npc, target)
         end
     elseif cmdType == 4 then
         local npc = net.ReadEntity()
@@ -239,11 +243,57 @@ timer.Create("SFS_SquadTick", SFS.Config.SquadFollowTickInterval, 0, function()
     end
 end)
 
+local SQUAD_DEFEND_RADIUS = 2000
+local defendNotifyCooldown = {}
+
+hook.Add("EntityTakeDamage", "SFS_SquadDefend", function(victim, dmginfo)
+    if not IsValid(victim) or not victim:IsNPC() then return end
+
+    local factionID = SFS.SquadOwners[victim]
+    if not factionID then return end
+
+    local attacker = dmginfo:GetAttacker()
+    if not IsValid(attacker) or attacker == victim then return end
+
+    if attacker:IsPlayer() then
+        local attackerFac = SFS.GetPlayerFaction(attacker:SteamID())
+        if attackerFac and attackerFac.id == factionID then return end
+    elseif attacker:IsNPC() then
+        if SFS.SquadOwners[attacker] == factionID then return end
+    else
+        return
+    end
+
+    local victimPos = victim:GetPos()
+    local defenders = 0
+
+    for npc, fID in pairs(SFS.SquadOwners) do
+        if fID == factionID and IsValid(npc) and npc:GetPos():DistToSqr(victimPos) <= SQUAD_DEFEND_RADIUS ^ 2 then
+            orderAttack(npc, attacker)
+            defenders = defenders + 1
+        end
+    end
+
+    if defenders == 0 then return end
+
+    local now = CurTime()
+    if defendNotifyCooldown[victim] and now - defendNotifyCooldown[victim] < 5 then return end
+    defendNotifyCooldown[victim] = now
+
+    for _, p in ipairs(player.GetAll()) do
+        local fac = SFS.GetPlayerFaction(p:SteamID())
+        if fac and fac.id == factionID then
+            sendChat(p, "SquadDefending", { npcClass = victim:GetClass() })
+        end
+    end
+end)
+
 hook.Add("EntityRemoved", "SFS_SquadCleanup", function(ent)
     SFS.SquadOwners[ent] = nil
     SFS.SquadFollowing[ent] = nil
     SFS.SquadAttacking[ent] = nil
     followLastOrder[ent] = nil
+    defendNotifyCooldown[ent] = nil
 end)
 
 hook.Add("PlayerInitialSpawn", "SFS_SquadLikeOnJoin", function(ply)

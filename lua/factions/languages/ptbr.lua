@@ -80,4 +80,5 @@ return {
     SquadRadialFollow = "Me siga!",
     SquadRadialStop = "Parar ataque!",
     SquadAttackStopped = "{addonprefix} {npcClass} parou de atacar.",
+    SquadDefending = "{addonprefix} Seu esquadrão tá defendendo {npcClass}!",
 }
